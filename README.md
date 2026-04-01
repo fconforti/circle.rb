@@ -178,6 +178,165 @@ To generate a new entity secret:
 secret = Circle::EntitySecret.generate  # => 64-char hex string
 ```
 
+## Examples
+
+The [`examples/`](examples/) directory contains runnable scripts that demonstrate the gem's features end-to-end on the ETH-SEPOLIA testnet.
+
+### Setup
+
+```bash
+cd examples
+cp .env.example .env
+# Add your CIRCLE_API_KEY to .env
+bundle install
+bundle exec ruby 00_setup.rb   # generates and registers your entity secret
+```
+
+### 00 — Setup
+
+Generates an entity secret, encrypts it with Circle's public key, registers it, and saves the recovery file. You only run this once per Circle account.
+
+```ruby
+entity_secret = Circle::EntitySecret.generate
+public_key = client.developer_account.get_public_key.data["publicKey"]
+ciphertext = Circle::EntitySecret.encrypt(
+  entity_secret_hex: entity_secret,
+  public_key_pem: public_key
+)
+client.developer_account.register_entity_secret(
+  entity_secret_ciphertext: ciphertext
+)
+```
+
+### 01 — Wallet Sets & Wallets
+
+Creates a wallet set (a container for wallets) and an ETH-SEPOLIA wallet, then checks token balances. Safe to re-run — reuses existing resources.
+
+```ruby
+wallet_set = client.wallet_sets.create(name: "My App Wallets")
+wallet = client.wallets.create(
+  wallet_set_id: wallet_set.data["walletSet"]["id"],
+  blockchains: ["ETH-SEPOLIA"],
+  count: 1
+)
+balances = client.wallets.get_token_balance(wallet_id)
+```
+
+### 02 — Transfer EURC
+
+Transfers EURC between two wallets. Estimates the gas fee first, then executes the transfer and polls for confirmation.
+
+```ruby
+fee = client.transactions.estimate_transfer_fee(
+  wallet_id: source_id,
+  token_id: eurc_token_id,
+  destination_address: dest_address,
+  amounts: ["0.01"]
+)
+
+tx = client.transactions.create_transfer(
+  wallet_id: source_id,
+  token_id: eurc_token_id,
+  destination_address: dest_address,
+  amounts: ["0.01"],
+  fee_level: "MEDIUM"
+)
+```
+
+### 03 — Check Balances
+
+Lists all your ETH-SEPOLIA wallets and their token balances.
+
+```ruby
+wallets = client.wallets.list(blockchain: "ETH-SEPOLIA")
+wallets.data["wallets"].each do |w|
+  balances = client.wallets.get_token_balance(w["id"])
+  balances.data["tokenBalances"].each do |b|
+    puts "#{b["token"]["symbol"]}: #{b["amount"]}"
+  end
+end
+```
+
+### 04 — Smart Contracts (Marketplace with 1% Fee)
+
+Deploys a custom `MarketplaceFee` smart contract that splits every EURC payment: 99% to the seller, 1% to a marketplace fee wallet. Demonstrates the full flow: deploy, approve, and execute a contract.
+
+```ruby
+# Deploy the contract (constructor takes the fee wallet address)
+deploy = client.contracts.deploy(
+  name: "MarketplaceFee",
+  blockchain: "ETH-SEPOLIA",
+  wallet_id: buyer_wallet_id,
+  abi_json: contract_abi,
+  bytecode: contract_bytecode,
+  constructor_parameters: [marketplace_address],
+  fee_level: "HIGH"
+)
+
+# Approve the contract to spend buyer's EURC
+client.transactions.create_contract_execution(
+  wallet_id: buyer_wallet_id,
+  contract_address: eurc_address,
+  abi_function_signature: "approve(address,uint256)",
+  abi_parameters: [contract_address, amount.to_s],
+  fee_level: "MEDIUM"
+)
+
+# Execute the transfer with fee
+client.transactions.create_contract_execution(
+  wallet_id: buyer_wallet_id,
+  contract_address: contract_address,
+  abi_function_signature: "transferWithFee(address,address,uint256)",
+  abi_parameters: [eurc_address, seller_address, amount.to_s],
+  fee_level: "MEDIUM"
+)
+```
+
+The Solidity source is in [`examples/contracts/MarketplaceFee.sol`](examples/contracts/MarketplaceFee.sol).
+
+### 05 — Gasless Transfer (Gas Station)
+
+Creates a Smart Contract Account (SCA) wallet and sends EURC without any ETH for gas. Circle's Gas Station sponsors the gas fees automatically.
+
+```ruby
+# Create an SCA wallet (required for gas sponsorship on EVM)
+wallet = client.wallets.create(
+  wallet_set_id: wallet_set_id,
+  blockchains: ["ETH-SEPOLIA"],
+  count: 1,
+  account_type: "SCA"
+)
+
+# Transfer from SCA wallet — zero ETH, gas is sponsored
+client.transactions.create_transfer(
+  wallet_id: sca_wallet_id,
+  token_id: eurc_token_id,
+  destination_address: dest_address,
+  amounts: ["0.5"],
+  fee_level: "MEDIUM"
+)
+```
+
+On testnet, gas sponsorship is preconfigured. On mainnet, configure a policy in the [Circle Developer Console](https://console.circle.com).
+
+### 06 — Webhooks
+
+Lists webhook subscriptions and optionally creates a new one. Circle verifies the endpoint is reachable before activating it. Includes a commented Sinatra example for verifying webhook signatures.
+
+```bash
+bundle exec ruby 06_webhooks.rb                           # list subscriptions
+bundle exec ruby 06_webhooks.rb https://your-webhook-url  # create one
+```
+
+```ruby
+# Verify webhook signatures in your web server
+event = Circle::Webhook.construct_event(
+  payload: request.body.read,
+  signature: request.env["HTTP_X_CIRCLE_SIGNATURE"],
+  public_key: public_key_b64
+)
+```
+
 ## License
 
 MIT
