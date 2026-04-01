@@ -180,7 +180,7 @@ secret = Circle::EntitySecret.generate  # => 64-char hex string
 
 ## Examples
 
-The following examples demonstrate the gem's features on the ETH-SEPOLIA testnet. Full runnable scripts are available at [circle.rb.examples](https://github.com/fconforti/circle.rb.examples).
+The following examples demonstrate the gem's features on the ETH-SEPOLIA testnet.
 
 ### 00 — Setup
 
