@@ -180,17 +180,7 @@ secret = Circle::EntitySecret.generate  # => 64-char hex string
 
 ## Examples
 
-The [`examples/`](examples/) directory contains runnable scripts that demonstrate the gem's features end-to-end on the ETH-SEPOLIA testnet.
-
-### Setup
-
-```bash
-cd examples
-cp .env.example .env
-# Add your CIRCLE_API_KEY to .env
-bundle install
-bundle exec ruby 00_setup.rb   # generates and registers your entity secret
-```
+The following examples demonstrate the gem's features on the ETH-SEPOLIA testnet. Full runnable scripts are available at [circle.rb.examples](https://github.com/fconforti/circle.rb.examples).
 
 ### 00 — Setup
 
@@ -291,8 +281,6 @@ client.transactions.create_contract_execution(
   fee_level: "MEDIUM"
 )
 ```
-
-The Solidity source is in [`examples/contracts/MarketplaceFee.sol`](examples/contracts/MarketplaceFee.sol).
 
 ### 05 — Gasless Transfer (Gas Station)
 
