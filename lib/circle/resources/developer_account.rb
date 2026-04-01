@@ -6,6 +6,10 @@ module Circle
       def get_public_key
         get_request("/config/entity/publicKey")
       end
+
+      def register_entity_secret(**params)
+        post_request("/config/entity/entitySecret", params)
+      end
     end
   end
 end

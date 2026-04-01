@@ -3,28 +3,32 @@
 module Circle
   module Resources
     class Subscriptions < Resource
+      NOTIFICATIONS_PATH = "/v2/notifications"
+
       def create(**params)
-        post_request("/subscriptions", params)
+        body = Util.deep_snake_to_camel(params)
+        body["idempotencyKey"] ||= SecureRandom.uuid
+        client.connection.post("#{NOTIFICATIONS_PATH}/subscriptions", body)
       end
 
       def list
-        get_request("/subscriptions")
+        client.connection.get("#{NOTIFICATIONS_PATH}/subscriptions")
       end
 
       def get(id)
-        get_request("/subscriptions/#{id}")
+        client.connection.get("#{NOTIFICATIONS_PATH}/subscriptions/#{id}")
       end
 
       def update(id, **params)
-        put_request("/subscriptions/#{id}", params)
+        client.connection.put("#{NOTIFICATIONS_PATH}/subscriptions/#{id}", Util.deep_snake_to_camel(params))
       end
 
       def delete(id)
-        delete_request("/subscriptions/#{id}")
+        client.connection.delete("#{NOTIFICATIONS_PATH}/subscriptions/#{id}")
       end
 
       def get_notification_signature(id)
-        get_request("/subscriptions/#{id}/notificationSignature")
+        client.connection.get("#{NOTIFICATIONS_PATH}/subscriptions/#{id}/notificationSignature")
       end
     end
   end
