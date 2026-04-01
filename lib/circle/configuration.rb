@@ -8,7 +8,7 @@ module Circle
       @base_url = "https://api.circle.com"
       @open_timeout = 30
       @read_timeout = 60
-      @user_agent = "circle-sdk-ruby/#{Circle::VERSION}"
+      @user_agent = "circle.rb/#{Circle::VERSION}"
     end
   end
 end

@@ -1,11 +1,11 @@
-# circle-sdk
+# circle.rb
 
 Ruby client for [Circle Web3 Services API](https://developers.circle.com/).
 
 ## Installation
 
 ```ruby
-gem "circle-sdk"
+gem "circle.rb"
 ```
 
 ## Configuration
